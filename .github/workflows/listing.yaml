@@ -1,0 +1,37 @@
+name: List directory to JSON
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+
+jobs:
+  list_directory:
+    runs-on: ubuntu-latest
+    env:
+      DIR: .
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: List directory and save to file
+        run: |
+          dir="${DIR}"
+          python3 - <<'PY' > "${dir}.json"
+          import json,os
+          d=os.environ.get('DIR','.')
+          try:
+              entries = os.listdir(d)
+          except Exception:
+              entries = []
+          print(json.dumps(entries))
+          PY
+
+      - name: Push to github
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B listings
+          git add .
+          git commit -m "Automated daily data updating" || echo "No changes to commit"
+          git push --set-upstream origin listings

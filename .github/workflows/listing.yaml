@@ -38,11 +38,11 @@ jobs:
           # Add generated output only (tune path if needed, e.g. tree_json)
           git add -A
 
-          # Only commit if there are changes
-          if git diff --cached; then
-            echo "No changes to commit"
-            exit 0
-          fi
+          # # Only commit if there are changes
+          # if git diff --cached; then
+          #   echo "No changes to commit"
+          #   exit 0
+          # fi
 
           git commit -m "Uploading directory listings"
           git push --set-upstream origin listings

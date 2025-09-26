@@ -24,7 +24,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -B listings
-          git pull origin listings
+          git pull origin listings --ff-only
           git add .
           git commit -m "Uploading directory listings" || echo "No changes to commit"
           git push --set-upstream origin listings

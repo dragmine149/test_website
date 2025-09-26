@@ -25,7 +25,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git stash
           git checkout -B listings
-          git pull origin listings --ff-only
+          git pull origin listings
           git stash apply
           git add .
           git commit -m "Uploading directory listings" || echo "No changes to commit"

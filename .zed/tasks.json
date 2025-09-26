@@ -41,7 +41,7 @@
   },
   {
     "label": "Start tailwind",
-    "command": "npx @tailwindcss/cli -i ./style.css -o ./dist/style.css --watch",
+    "command": "npx @tailwindcss/cli -i ./style_in.css -o ./style.css --watch",
     "allow_concurrent_runs": false,
     "hide": "always",
     "reveal": "never",

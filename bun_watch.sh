@@ -1,1 +1,1 @@
-bun build --watch --minify --sourcemap=linked --outdir=./dist/ --splitting ./index.ts
+bun build --watch --minify --sourcemap=linked --outdir=./ --splitting ./index.ts

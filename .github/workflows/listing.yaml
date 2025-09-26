@@ -1,8 +1,10 @@
 name: List directory to JSON
+
 on:
   push:
     branches:
       - main
+
 permissions:
   contents: write
 
@@ -12,24 +14,35 @@ jobs:
     env:
       DIR: .
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (main)
         uses: actions/checkout@v4
+        with:
+          ref: main
 
-      - name: List directory and save to file
+      - name: Run listing script
         run: |
           python .github/workflows/listing.py
 
-      - name: debug
+      - name: Show generated files (debug)
         run: ls -la
 
-      - name: Push to github
+      - name: Commit and push listings branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git stash
-          git pull origin listings
-          git checkout listings
-          git stash apply
-          git add .
-          git commit -m "Uploading directory listings" || echo "No changes to commit"
+
+          # Create or reset local listings branch based on remote main
+          git fetch origin --prune
+          git checkout -B listings
+
+          # Add generated output only (tune path if needed, e.g. tree_json)
+          git add -A
+
+          # Only commit if there are changes
+          if git diff --cached; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Uploading directory listings"
           git push --set-upstream origin listings

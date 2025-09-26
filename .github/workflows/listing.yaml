@@ -14,18 +14,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: List directory and save to file
         run: |
-          dir="${DIR}"
-          python3 - <<'PY' > "${dir}.json"
-          import json,os
-          d=os.environ.get('DIR','.')
-          try:
-              entries = os.listdir(d)
-          except Exception:
-              entries = []
-          print(json.dumps(entries))
-          PY
+          python .github/workflows/listing.py
 
       - name: Push to github
         run: |

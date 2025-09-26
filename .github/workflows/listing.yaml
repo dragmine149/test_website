@@ -32,7 +32,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Create or reset local listings branch based on remote main
-          git fetch origin --prune
+          git fetch origin listings --prune
           git checkout -B listings
 
           # Add generated output only (tune path if needed, e.g. tree_json)

@@ -1,6 +1,16 @@
 {
-  "dirs": {},
+  "dirs": {
+    "export": {
+      "dirs": {},
+      "files": [
+        "index-127swwhx.js",
+        "index-9w92tkpc.css",
+        "index.html"
+      ]
+    }
+  },
   "files": [
+    "build.sh",
     "index.html",
     "readme.md",
     "search.ts",

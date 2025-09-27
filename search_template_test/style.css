@@ -80,7 +80,7 @@ input[type="text"] {
 .highlight {
   background: #fffb91;
   border-radius: 3px;
-  padding: 0 1px;
+  padding: 0;
   margin: 0px;
 }
 
@@ -101,9 +101,6 @@ footer {
 
 #results>span {
   display: grid;
-  /*grid-template: "score score
- name name
-    reason reason";*/
 }
 
 #results>* span:not(#results>*>span>*):nth-child(1)::before {

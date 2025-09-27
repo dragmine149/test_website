@@ -81,7 +81,7 @@ input[type="text"] {
   background: #fffb91;
   border-radius: 3px;
   margin: 0;
-  padding: 0 1px;
+  padding: 0;
 }
 
 .selected {

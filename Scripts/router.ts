@@ -46,8 +46,16 @@ class Router {
     location.reload();
   }
 
+  #buildHeaders() {
+    const headers = new Headers();
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    headers.set('Pragma', 'no-cache');
+    headers.set('Expires', '0');
+    return headers;
+  }
+
   async getTestFromGithub(test: string) {
-    let result = await tryCatch(fetch(`${LINK}/listings/${test}.json`, { cache: "no-cache" }));
+    let result = await tryCatch(fetch(`${LINK}/listings/${test}.json`, { cache: "no-cache", headers: this.#buildHeaders() }));
     if (result.error) {
       alert("That test does not exist. Please try a different test.");
       return null;
@@ -70,7 +78,7 @@ class Router {
   }
 
   async getFileFromGithub(test: string, file: string) {
-    let result = await tryCatch(fetch(`${LINK}/main/${test}/${file}`, { cache: "no-cache" }));
+    let result = await tryCatch(fetch(`${LINK}/main/${test}/${file}`, { cache: "no-cache", headers: this.#buildHeaders() }));
     if (result.error) {
       console.warn("That file does not exist, returning blank to prevent failure");
       return "";

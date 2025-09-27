@@ -1,5 +1,11 @@
 {
-  "dirs": {},
+  "dirs": {
+    ".git": "",
+    ".github": "",
+    ".zed": "",
+    "Scripts": "",
+    "search_template_test": ""
+  },
   "files": [
     ".gitignore",
     "README.md",

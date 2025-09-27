@@ -106,17 +106,17 @@ footer {
 #results > * span:not(#results > * > span > *):first-child:before {
   content: "Score: ";
   display: inline-block;
-  width: 75px;
+  width: 100px;
 }
 
 #results > * span:not(#results > * > span > *):nth-child(2):before {
   content: "Tower: ";
   display: inline-block;
-  width: 75px;
+  width: 100px;
 }
 
 #results > * span:not(#results > * > span > *):nth-child(3):before {
   content: "Reasons: ";
   display: inline-block;
-  width: 75px;
+  width: 100px;
 }

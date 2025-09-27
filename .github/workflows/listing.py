@@ -47,8 +47,8 @@ def build_tree(dirpath: Path, recursive: bool = True) -> dict[str, Any]:
             files.append(name)
             continue
 
-        if is_dir and recursive:
-            node["dirs"][name] = build_tree(p)
+        if is_dir:
+            node["dirs"][name] = build_tree(p) if recursive else ""
             continue
 
     if files:

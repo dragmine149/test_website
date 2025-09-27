@@ -3,8 +3,8 @@
     "export": {
       "dirs": {},
       "files": [
-        "index-127swwhx.js",
         "index-9w92tkpc.css",
+        "index-v4z4tcs4.js",
         "index.html"
       ]
     }
@@ -16,7 +16,6 @@
     "search.ts",
     "search_template_export.html",
     "style.css",
-    "usage.js",
     "usage.js.map",
     "usage.ts"
   ]

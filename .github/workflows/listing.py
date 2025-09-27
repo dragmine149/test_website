@@ -12,6 +12,7 @@ from typing import Any
 import json
 
 ROOT_DIR: Path = Path(".").resolve()
+SAVE_DIR: Path = Path("/tmp/temp_save")
 
 def build_tree(dirpath: Path, recursive: bool = True) -> dict[str, Any]:
     """
@@ -64,8 +65,12 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
         path: Path where JSON will be written.
         data: Serializable data to dump.
     """
+
+    SAVE_DIR.mkdir(exist_ok=True)
+    save_path = SAVE_DIR.joinpath(path)
+
     text: str = json.dumps(data, indent=2, ensure_ascii=False)
-    _ = path.write_text(text)
+    _ = save_path.write_text(text)
 
 
 def main(_argv: list[str] | None = None) -> int:
@@ -82,7 +87,7 @@ def main(_argv: list[str] | None = None) -> int:
     for entry in sorted(ROOT_DIR.iterdir()):
         if not entry.is_dir():
             continue
-        if entry.name.startswith("."):
+        if entry.name.startswith(".") or entry.name == "Scripts":
             continue
         subtree: dict[str, Any] = build_tree(entry)
         write_json(Path(f"{entry.name}.json"), subtree)

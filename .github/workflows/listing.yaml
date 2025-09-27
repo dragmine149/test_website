@@ -24,7 +24,7 @@ jobs:
           python .github/workflows/listing.py
 
       - name: Show generated files (debug)
-        run: ls -la
+        run: ls -la /tmp/temp_save
 
       - name: Commit and push listings branch
         run: |
@@ -32,11 +32,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git fetch origin listings --prune
-
-          git add -A
-          git stash
           git switch listings
-          git stash pop
+
+          cp -r /tmp/temp_save/* ./
+          git add -A
 
           git commit -m "Updating directory listings" || echo "No changes to commit"
           git push --set-upstream origin listings --force

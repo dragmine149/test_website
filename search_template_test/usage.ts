@@ -30,7 +30,7 @@ let min: HTMLInputElement;
 let minVal: HTMLSpanElement;
 let results: HTMLDivElement;
 
-document.addEventListener('DOMContentLoaded', () => {
+globalThis.initialise = () => {
   query = document.getElementById('query') as HTMLInputElement;
   min = document.getElementById('minScore') as HTMLInputElement;
   minVal = document.getElementById("minVal") as HTMLSpanElement;
@@ -48,4 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
   update_ui();
 
   minVal.textContent = min.value;
-});
+}
+
+document.addEventListener('DOMContentLoaded', globalThis.initialise);

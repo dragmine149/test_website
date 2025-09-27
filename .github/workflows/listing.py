@@ -13,7 +13,7 @@ import json
 
 ROOT_DIR: Path = Path(".").resolve()
 
-def build_tree(dirpath: Path) -> dict[str, Any]:
+def build_tree(dirpath: Path, recursive: bool = True) -> dict[str, Any]:
     """
     Recursively build a tree representation for the directory.
 
@@ -34,6 +34,9 @@ def build_tree(dirpath: Path) -> dict[str, Any]:
     except PermissionError:
         return node
 
+    node["dirs"] = {}
+    node["files"] = []
+
     for p in entries:
         name: str = p.name
         is_file: bool = p.is_file()
@@ -43,8 +46,8 @@ def build_tree(dirpath: Path) -> dict[str, Any]:
             files.append(name)
             continue
 
-        if is_dir:
-            node[name] = build_tree(p)
+        if is_dir and recursive:
+            node["dirs"][name] = build_tree(p)
             continue
 
     if files:
@@ -84,6 +87,8 @@ def main(_argv: list[str] | None = None) -> int:
         subtree: dict[str, Any] = build_tree(entry)
         write_json(Path(f"{entry.name}.json"), subtree)
 
+
+    write_json(Path("root.json"), build_tree(ROOT_DIR, False))
     return 0
 
 

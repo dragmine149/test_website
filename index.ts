@@ -1,7 +1,9 @@
-import { router } from "./Scripts/router";
+import { Router } from "./Scripts/router";
 
-router;
-
-globalThis.debug = {
-  router
-}
+let router: Router;
+addEventListener('DOMContentLoaded', () => {
+  router = new Router();
+  globalThis.debug = {
+    router
+  }
+});

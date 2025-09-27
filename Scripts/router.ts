@@ -1,3 +1,4 @@
+import { replaceAllLinks } from "./links";
 import { tryCatch } from "./utils";
 import { Marked } from "marked";
 
@@ -13,9 +14,12 @@ interface TestStorage {
   document: Map<string, string>
 }
 
+const LINK = `https://raw.githubusercontent.com/dragmine149/test_website/refs/heads`;
+
 class Router {
   tests: Map<string, TestStorage>;
   marked: Marked;
+  title: HTMLTitleElement;
 
   constructor() {
     this.tests = new Map();
@@ -26,19 +30,26 @@ class Router {
     this.loadTestList();
 
     this.marked = new Marked();
+    this.title = document.getElementById("title") as HTMLTitleElement;
     addEventListener("test", (ev) => this.loadTest((ev as CustomEvent).detail))
+  }
+
+  setBrowserDetails(test: string) {
+    let url = new URL(location.toString());
+    url.searchParams.set("test", test);
+    history.pushState(undefined, "", url);
+
+    this.title.textContent = `Drag's Test Suite -> ${test || "Main Page"}`;
   }
 
   endTest() {
     document.body.innerHTML = this.tests.get("root")!.document.get("root")!;
 
-    let url = new URL(location.toString());
-    url.searchParams.set("test", "");
-    history.pushState(undefined, "", url);
+    this.setBrowserDetails("");
   }
 
   async getTestFromGithub(test: string) {
-    let result = await tryCatch(fetch(`https://raw.githubusercontent.com/dragmine149/test_website/refs/heads/listings/${test}.json`));
+    let result = await tryCatch(fetch(`${LINK}/listings/${test}.json`));
     if (result.error) {
       alert("That test does not exist. Please try a different test.");
       return null;
@@ -61,7 +72,7 @@ class Router {
   }
 
   async getFileFromGithub(test: string, file: string) {
-    let result = await tryCatch(fetch(`https://raw.githubusercontent.com/dragmine149/test_website/refs/heads/main/${test}/${file}`));
+    let result = await tryCatch(fetch(`${LINK}/main/${test}/${file}`));
     if (result.error) {
       console.warn("That file does not exist, returning blank to prevent failure");
       return "";
@@ -101,10 +112,19 @@ class Router {
 
   async loadTest(test: string) {
     console.log(`Attempting to load ${test}`);
+    this.setBrowserDetails(test);
+
+    let index = await this.getFileFromGithub(test, "index.html");
+    let dom = new DOMParser()
+    let test_doc = dom.parseFromString(index, "text/html");
+    replaceAllLinks(test_doc.body, LINK);
+    document.body.innerHTML = test_doc.body.innerHTML;
+
+    this.tests.set(test, {
+      document: new Map<string, string>().set("index.html", test_doc.body.innerHTML),
+      readme: ""
+    });
   }
 
 }
-
-const router = new Router();
-
-export { router };
+export { Router };

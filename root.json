@@ -1,0 +1,15 @@
+{
+  "dirs": {},
+  "files": [
+    ".gitignore",
+    "README.md",
+    "bun_watch.sh",
+    "index.html",
+    "index.js",
+    "index.js.map",
+    "index.ts",
+    "server.zsh",
+    "style.css",
+    "style_in.css"
+  ]
+}

@@ -1,13 +1,17 @@
 {
-  "export": {
-    "files": [
-      "search_template_test-j4wbe3c6.css",
-      "search_template_test-vz7kw79b.js",
-      "search_template_test-vz7kw79b.js.map",
-      "search_template_test.html"
-    ]
+  "dirs": {
+    "export": {
+      "dirs": {},
+      "files": [
+        "search_template_test-j4wbe3c6.css",
+        "search_template_test-vz7kw79b.js",
+        "search_template_test-vz7kw79b.js.map",
+        "search_template_test.html"
+      ]
+    }
   },
   "files": [
+    "readme.md",
     "search.ts",
     "search_template_export.html",
     "search_template_test.html",

@@ -1,6 +1,7 @@
-import { replaceAllLinks } from "./links";
 import { tryCatch } from "./utils";
 import { Marked } from "marked";
+import { page } from "../../Scripts/loader/page";
+import { modules } from "../../Modules/modules";
 
 interface FileStructure {
   files: string[],
@@ -17,21 +18,19 @@ interface TestStorage {
 const LINK = `https://raw.githubusercontent.com/dragmine149/test_website/refs/heads`;
 
 class Router {
-  tests: Map<string, TestStorage>;
   marked: Marked;
   title: HTMLTitleElement;
 
   constructor() {
-    this.tests = new Map();
-    this.tests.set("root", {
-      readme: "",
-      document: new Map<string, string>().set("root", document.body.innerHTML)
-    });
     this.loadTestList();
 
     this.marked = new Marked();
     this.title = document.getElementById("title") as HTMLTitleElement;
     addEventListener("test", (ev) => this.loadTest((ev as CustomEvent).detail))
+
+    let url = new URL(location.toString());
+    let test = url.searchParams.get("test");
+    if (test) this.loadTest(test);
   }
 
   setBrowserDetails(test: string) {
@@ -43,13 +42,12 @@ class Router {
   }
 
   endTest() {
-    document.body.innerHTML = this.tests.get("root")!.document.get("root")!;
-
     this.setBrowserDetails("");
+    location.reload();
   }
 
   async getTestFromGithub(test: string) {
-    let result = await tryCatch(fetch(`${LINK}/listings/${test}.json`));
+    let result = await tryCatch(fetch(`${LINK}/listings/${test}.json`, { cache: "no-cache" }));
     if (result.error) {
       alert("That test does not exist. Please try a different test.");
       return null;
@@ -72,7 +70,7 @@ class Router {
   }
 
   async getFileFromGithub(test: string, file: string) {
-    let result = await tryCatch(fetch(`${LINK}/main/${test}/${file}`));
+    let result = await tryCatch(fetch(`${LINK}/main/${test}/${file}`, { cache: "no-cache" }));
     if (result.error) {
       console.warn("That file does not exist, returning blank to prevent failure");
       return "";
@@ -112,18 +110,23 @@ class Router {
 
   async loadTest(test: string) {
     console.log(`Attempting to load ${test}`);
-    this.setBrowserDetails(test);
+    // this.setBrowserDetails(test);
 
-    let index = await this.getFileFromGithub(test, "index.html");
+    let index = await this.getFileFromGithub(test, "export/index.html");
     let dom = new DOMParser()
     let test_doc = dom.parseFromString(index, "text/html");
-    replaceAllLinks(test_doc.body, LINK);
-    document.body.innerHTML = test_doc.body.innerHTML;
 
-    this.tests.set(test, {
-      document: new Map<string, string>().set("index.html", test_doc.body.innerHTML),
-      readme: ""
-    });
+    await modules.load_elements_from_dom(test_doc.body, `${LINK}/main/${test}/export`);
+    let url = new URL(location.toString());
+    url.searchParams.set("test", test);
+    page.load_page_contents(url, test_doc.body);
+
+    if (!globalThis.initialise) {
+      alert("Can't find required initialise function to overwrite `DOMContentLoaded` event!");
+      return;
+    }
+
+    globalThis.initialise();
   }
 
 }

@@ -108,18 +108,18 @@ footer {
 
 #results>* span:not(#results>*>span>*):nth-child(1)::before {
   content: "Score: ";
-  width: 75px;
+  width: 100px;
   display: inline-block;
 }
 
 #results>* span:not(#results>*>span>*):nth-child(2)::before {
   content: "Tower: ";
-  width: 75px;
+  width: 100px;
   display: inline-block;
 }
 
 #results>* span:not(#results>*>span>*):nth-child(3)::before {
   content: "Reasons: ";
-  width: 75px;
+  width: 100px;
   display: inline-block;
 }

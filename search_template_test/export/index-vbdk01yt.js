@@ -1,22 +1,21 @@
 // search.ts
+var searched = new Map;
+function twodp(num) {
+  return (num * 100 | 0) / 100;
+}
 function shortTowerName(tower_name) {
   return tower_name.split(/[\s-]/gm).map((word) => word.toLowerCase()).map((word) => word == "of" || word == "and" ? word[0] : word[0].toUpperCase()).join("");
 }
-function isAcronymQuery(q) {
-  let is_acro = q.startsWith("To") || q.startsWith("Co");
-  let thirdLetter = q.charAt(2);
-  is_acro == is_acro && thirdLetter === thirdLetter.toUpperCase() && thirdLetter.toLowerCase();
-  return is_acro;
-}
-function isSubsequence(sub, full) {
-  let i = 0;
-  let j = 0;
-  for (;i < sub.length && j < full.length; j++) {
-    if (sub[i].toLowerCase() === full[j].toLowerCase()) {
-      i++;
-    }
+function improvedAcronymQuery(query, acros) {
+  if (query.length > 6)
+    return 0;
+  for (let acro of acros) {
+    if (acro.startsWith(query))
+      return 1;
+    if (acro.startsWith(query, 2))
+      return 2;
   }
-  return i === sub.length;
+  return 0;
 }
 function levenshtein(a, b) {
   const A = a.toLowerCase();
@@ -39,84 +38,68 @@ function levenshtein(a, b) {
 function fuzzyScore(a, b) {
   const distance = levenshtein(a, b);
   const maxLen = Math.max(a.length, b.length, 1);
-  return Math.max(0, Math.round((1 - distance / maxLen) * 100));
+  return twodp(1 - distance / maxLen);
 }
-function searchTowers(query, data, opts) {
+function searchTowers(query, names, opts) {
   opts = opts || {};
   const MIN_SCORE = typeof opts.minScore === "number" ? opts.minScore : 30;
-  const q = query.trim();
-  const isAcr = isAcronymQuery(q);
-  const shortNames = data.map((d) => ({ name: d, short: shortTowerName(d) }));
-  const scored = shortNames.map(({ name, short }) => {
-    let score = 0;
+  const q = query.trim().toLowerCase();
+  if (q.length == 0)
+    return names.map(({ name, short }) => {
+      return { name, score: 100, reasons: ["empty query"] };
+    });
+  const qHasAcr = improvedAcronymQuery(q, names.map((v) => v.short));
+  const scored = names.map(({ name, short }) => {
+    let score = 100;
     const reasons = [];
-    if (isAcr) {
-      const qUpper = q;
-      const shortUpper = short;
-      if (qUpper === shortUpper) {
-        score = Math.max(score, 100);
-        reasons.push("exact acronym");
+    if (qHasAcr) {
+      if (q == short) {
+        score *= 3;
+        reasons.push("Acro exact");
+        return { name, score: Math.floor(score), reasons };
       }
-      if (shortUpper.startsWith(qUpper)) {
-        score = Math.max(score, 80);
-        reasons.push("acronym prefix");
+      if (short.startsWith(q)) {
+        score *= 1.4;
+        reasons.push("Acro startswith");
       }
-      if (isSubsequence(qUpper, shortUpper)) {
-        score = Math.max(score, 60);
-        reasons.push("acronym subsequence");
+      const fs = fuzzyScore(q, short);
+      if (fs > 0.6) {
+        score *= fs / 0.6 * 0.9;
+        reasons.push(`acro fuzzy: ${fs}`);
       }
-      const fs = fuzzyScore(qUpper, shortUpper);
-      const fsScore = Math.round(fs * 0.6);
-      score = Math.max(score, fsScore);
-      reasons.push(`acronym fuzzy:${fs}`);
     }
-    if (!isAcr) {
-      const lowerName = name.toLowerCase();
-      const ql = q.toLowerCase();
-      if (lowerName === ql) {
-        score = Math.max(score, 100);
-        reasons.push("exact name");
-      }
-      if (lowerName.startsWith(ql)) {
-        score = Math.max(score, 70);
-        reasons.push("name startsWith");
-      }
-      if (lowerName.includes(ql)) {
-        score = Math.max(score, 50);
-        reasons.push("name includes");
-      }
-      const fs2 = fuzzyScore(ql, lowerName);
-      score = Math.max(score, fs2);
-      reasons.push(`name fuzzy:${fs2}`);
+    if (q == name) {
+      score *= 3;
+      reasons.push("Name exact");
+      return { name, score: Math.floor(score), reasons };
     }
-    return { name, score, reasons };
+    if (name.split(" ")[0] == q.split(" ")[0]) {
+      score *= 1.05;
+      reasons.push("name is type");
+    }
+    let start = false;
+    if (name.startsWith(q)) {
+      score *= 2;
+      reasons.push("name start");
+      start = true;
+    }
+    if (name.includes(q, start ? q.length : 0)) {
+      score *= 1.15;
+      reasons.push("name includes");
+    }
+    if (reasons.length == 0) {
+      score *= 0.4;
+      reasons.push("No reason, hence bad score");
+    }
+    let name_boost = twodp(1 / name.length + 1);
+    score *= name_boost;
+    reasons.push(`Name boost: ${name_boost}`);
+    return { name, score: Math.floor(score), reasons };
   });
   return scored.filter((r) => r.score >= MIN_SCORE).sort((a, b) => {
     const byScore = b.score - a.score;
     return byScore !== 0 ? byScore : a.name.localeCompare(b.name);
   });
-}
-function renderResultSpan(result, query) {
-  const span = document.createElement("span");
-  const score = document.createElement("span");
-  score.innerText = result.score.toString();
-  const name = document.createElement("span");
-  name.innerText = result.name;
-  const reason = document.createElement("span");
-  reason.innerText = result.reasons.join(", ");
-  span.appendChild(score);
-  span.appendChild(name);
-  span.appendChild(reason);
-  const textToHighlight = isAcronymQuery(query) ? query : query.trim();
-  if (textToHighlight.length === 0) {
-    return span;
-  }
-  try {
-    highlight_span(name, textToHighlight, false);
-  } catch (e) {
-    console.warn("highlight_span threw an error:", e);
-  }
-  return span;
 }
 var data = [
   "Tower of Overcoming Hatred",
@@ -525,37 +508,93 @@ var data = [
 ];
 
 // usage.ts
+var names = data.map((d) => ({ name: d.toLowerCase(), short: shortTowerName(d).toLowerCase() }));
+var spans = new Map;
+function createSpan(span_name) {
+  const span = document.createElement("span");
+  const score = document.createElement("span");
+  score.innerText = "";
+  const name = document.createElement("span");
+  name.innerText = span_name;
+  const reason = document.createElement("span");
+  reason.innerText = "";
+  span.appendChild(score);
+  span.appendChild(name);
+  span.appendChild(reason);
+  spans.set(span_name, span);
+  results.appendChild(span);
+  return span;
+}
 function highlight_span(span, text, selected) {
-  let regex = new RegExp(`[${text}]`, `gi`);
-  span.innerHTML = span.innerText.replaceAll(regex, (match) => {
-    return `<span class="highlight ${selected ? "selected" : ""}"">${match}</span>`;
-  });
+  const selectedClass = selected ? " selected" : "";
+  const escapeForCharClass = (s) => s.replace(/[-\\\]^]/g, (m) => `\\${m}`);
+  if (!text)
+    return;
+  const chars = escapeForCharClass(text);
+  const regex = new RegExp("[" + chars + "]+", "gi");
+  const children = Array.from(span.childNodes);
+  for (const node of children) {
+    if (node.nodeType !== Node.TEXT_NODE)
+      continue;
+    const txt = node.textContent ?? "";
+    if (!txt)
+      continue;
+    let lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let m;
+    regex.lastIndex = 0;
+    while (m = regex.exec(txt)) {
+      const start = m.index;
+      const matchText = m[0];
+      if (start > lastIndex) {
+        frag.appendChild(document.createTextNode(txt.slice(lastIndex, start)));
+      }
+      const hl = document.createElement("span");
+      hl.className = "highlight" + selectedClass;
+      hl.textContent = matchText;
+      frag.appendChild(hl);
+      lastIndex = start + matchText.length;
+    }
+    if (lastIndex < txt.length) {
+      frag.appendChild(document.createTextNode(txt.slice(lastIndex)));
+    }
+    if (frag.childNodes.length === 0)
+      continue;
+    span.replaceChild(frag, node);
+  }
 }
 function update_ui() {
-  const fragment = document.createDocumentFragment();
-  searchTowers(query.value, data, { minScore: min.valueAsNumber }).forEach((result) => {
-    let elm = renderResultSpan(result, query.value);
-    fragment.appendChild(elm);
+  spans.forEach((span) => span.style.order = "10000");
+  let results = searchTowers(query.value, names, { minScore: min.valueAsNumber });
+  results.forEach((result, index) => {
+    let span = spans.get(result.name);
+    if (span == undefined)
+      span = createSpan(result.name);
+    span.firstElementChild.innerText = result.score.toString();
+    highlight_span(span.children[1], query.value.trim(), false);
+    span.lastElementChild.innerText = result.reasons.join(", ");
+    span.style.order = index.toString();
   });
-  results.innerHTML = "";
-  results.appendChild(fragment);
+  count.innerText = `Result count: ${results.length}`;
 }
 var query;
 var min;
-var minVal;
 var results;
+var count;
 globalThis.initialise = () => {
   query = document.getElementById("query");
   min = document.getElementById("minScore");
-  minVal = document.getElementById("minVal");
   results = document.getElementById("results");
+  count = document.getElementById("count");
   query.addEventListener("input", (ev) => update_ui());
   min.addEventListener("input", (ev) => {
-    let value = ev.target.value;
-    minVal.textContent = value;
     update_ui();
   });
   update_ui();
-  minVal.textContent = min.value;
 };
 document.addEventListener("DOMContentLoaded", globalThis.initialise);
+globalThis.debug = {
+  searched,
+  improvedAcronymQuery,
+  levenshtein
+};

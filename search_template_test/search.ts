@@ -18,6 +18,13 @@ export type SearchResult = {
   reasons: string[]; // all reasons that contributed (explanatory)
 };
 
+export let searched: Map<string, number> = new Map();
+let timeout: number;
+
+export function twodp(num: number): number {
+  return ((num * 100) | 0) / 100;
+}
+
 /**
  * Shortens a tower name into the tower code (user function).
  * Example: "Citadel of Wacky Strategy" => "CoWS"
@@ -36,15 +43,27 @@ export function shortTowerName(tower_name: string): string {
  * if you want a more general acronym detection.
  */
 export function isAcronymQuery(q: string): boolean {
-  let is_acro = q.startsWith("To") || q.startsWith("Co");
+  // this might break in the future but for now its a good catch.
+  if (q.length > 6) return false;
+
+  let is_acro = q.startsWith("To") || q.startsWith("Co") || q.startsWith("So");
   let thirdLetter = q.charAt(2);
   // the original line was probably intended to assert something;
   // keep it as a no-op expression to preserve behaviour that was supplied.
-  is_acro ==
+  is_acro =
     is_acro &&
     thirdLetter === thirdLetter.toUpperCase() &&
     thirdLetter !== thirdLetter.toLowerCase();
   return is_acro;
+}
+
+export function improvedAcronymQuery(query: string, acros: string[]): 0 | 1 | 2 {
+  if (query.length > 6) return 0;
+  for (let acro of acros) {
+    if (acro.startsWith(query)) return 1;
+    if (acro.startsWith(query, 2)) return 2;
+  }
+  return 0;
 }
 
 /**
@@ -54,15 +73,14 @@ export function isSubsequence(sub: string, full: string): boolean {
   let i = 0;
   let j = 0;
   for (; i < sub.length && j < full.length; j++) {
-    if (sub[i].toLowerCase() === full[j].toLowerCase()) {
-      i++;
-    }
+    if (sub[i] === full[j]) i++;
   }
   return i === sub.length;
 }
 
 /**
  * Levenshtein distance (case-insensitive).
+ * Returns the number of letters required to change.
  */
 export function levenshtein(a: string, b: string): number {
   const A = a.toLowerCase();
@@ -86,12 +104,12 @@ export function levenshtein(a: string, b: string): number {
 }
 
 /**
- * Fuzzy score between 0 and 100 based on normalized Levenshtein.
+ * Fuzzy score between 0 and 100 based on normalised Levenshtein.
  */
 export function fuzzyScore(a: string, b: string): number {
   const distance = levenshtein(a, b);
   const maxLen = Math.max(a.length, b.length, 1);
-  return Math.max(0, Math.round((1 - distance / maxLen) * 100));
+  return twodp(1 - distance / maxLen);
 }
 
 /**
@@ -100,6 +118,11 @@ export function fuzzyScore(a: string, b: string): number {
 export type SearchOptions = {
   minScore?: number; // default 30
 };
+
+interface Names {
+  name: string,
+  short: string,
+}
 
 /**
  * Main search function.
@@ -114,61 +137,136 @@ export type SearchOptions = {
  * Returns results filtered by the configured minScore (default 30),
  * sorted by descending score and alphabetically as a tiebreaker.
  */
-export function searchTowers(query: string, data: string[], opts?: SearchOptions): SearchResult[] {
+export function searchTowers(query: string, names: Names[], opts?: SearchOptions): SearchResult[] {
   opts = opts || {};
   const MIN_SCORE = typeof opts.minScore === "number" ? opts.minScore : 30;
-  const q = query.trim();
-  const isAcr = isAcronymQuery(q);
+  const q = query.trim().toLowerCase();
 
-  const shortNames = data.map((d) => ({ name: d, short: shortTowerName(d) }));
+  if (q.length == 0) return names.map(({ name, short }) => { return { name, score: 100, reasons: ["empty query"] } });
 
-  const scored = shortNames.map(({ name, short }) => {
-    let score = 0;
+  // const isAcr = isAcronymQuery(q);
+  const qHasAcr = improvedAcronymQuery(q, names.map((v) => v.short));
+
+  const scored = names.map(({ name, short }) => {
+    let score = 100;
     const reasons: string[] = [];
+    // const isAcr = improvedAcronymQuery(q, short);
 
-    if (isAcr) {
-      const qUpper = q;
-      const shortUpper = short;
-      if (qUpper === shortUpper) {
-        score = Math.max(score, 100);
-        reasons.push("exact acronym");
+    // small boost for previously searched.
+    // let previous = (searched.get(name) ?? 1) / 40 * 0.05 + 1;
+    // score *= previous;
+    // reasons.push(`Previous: ${previous}`);
+
+    if (qHasAcr) {
+      // score *= ((1.5 / isAcr) + 1);
+      // also includes boost.
+      // reasons.push(`Acro boost: ${short}`);
+
+      if (q == short) {
+        score *= 3;
+        reasons.push("Acro exact");
+        return { name, score: Math.floor(score), reasons };
       }
-      if (shortUpper.startsWith(qUpper)) {
-        score = Math.max(score, 80);
-        reasons.push("acronym prefix");
+
+      if (short.startsWith(q)) {
+        score *= 1.4;
+        reasons.push("Acro startswith");
       }
-      if (isSubsequence(qUpper, shortUpper)) {
-        score = Math.max(score, 60);
-        reasons.push("acronym subsequence");
+
+      const fs = fuzzyScore(q, short);
+      if (fs > 0.6) {
+        score *= (fs / 0.6) * 0.9;
+        reasons.push(`acro fuzzy: ${fs}`);
       }
-      const fs = fuzzyScore(qUpper, shortUpper);
-      const fsScore = Math.round(fs * 0.6); // downweight fuzzy for acronyms
-      score = Math.max(score, fsScore);
-      reasons.push(`acronym fuzzy:${fs}`);
     }
 
-    if (!isAcr) {
-      const lowerName = name.toLowerCase();
-      const ql = q.toLowerCase();
-      if (lowerName === ql) {
-        score = Math.max(score, 100);
-        reasons.push("exact name");
-      }
-      if (lowerName.startsWith(ql)) {
-        score = Math.max(score, 70);
-        reasons.push("name startsWith");
-      }
-      if (lowerName.includes(ql)) {
-        score = Math.max(score, 50);
-        reasons.push("name includes");
-      }
-      const fs2 = fuzzyScore(ql, lowerName);
-      score = Math.max(score, fs2);
-      reasons.push(`name fuzzy:${fs2}`);
+    if (q == name) {
+      score *= 3;
+      reasons.push("Name exact");
+      return { name, score: Math.floor(score), reasons };
     }
 
-    return { name, score, reasons };
+    if (name.split(" ")[0] == q.split(" ")[0]) {
+      score *= 1.05;
+      reasons.push("name is type");
+    }
+
+    let start = false;
+    if (name.startsWith(q)) {
+      score *= 2;
+      reasons.push("name start");
+      start = true;
+    }
+
+    // includes only works if it doesn't start with it.
+    if (name.includes(q, start ? q.length : 0)) {
+      score *= 1.15;
+      reasons.push("name includes");
+    }
+
+    if (reasons.length == 0) {
+      score *= 0.4;
+      reasons.push("No reason, hence bad score");
+    }
+
+    // names are given bonus score if their length is shorter.
+    let name_boost = twodp((1 / name.length) + 1);
+    score *= name_boost;
+    reasons.push(`Name boost: ${name_boost}`);
+
+    // if (isAcr) {
+    //   if (q == short) {
+    //     score = score * 1;
+    //     reasons.push("exact acronym");
+    //   }
+    //   if (shortUpper.startsWith(qUpper)) {
+    //     score = Math.max(score, 80);
+    //     reasons.push("acronym prefix");
+    //   }
+    //   if (isSubsequence(qUpper, shortUpper)) {
+    //     score = Math.max(score, 60);
+    //     reasons.push("acronym subsequence");
+    //   }
+    //   const fs = fuzzyScore(qUpper, shortUpper);
+    //   const fsScore = Math.round(fs * 0.6); // downweight fuzzy for acronyms
+    //   score = Math.max(score, fsScore);
+    //   reasons.push(`acronym fuzzy:${fs}`);
+    // }
+
+    // const lowerName = name.toLowerCase();
+    // const ql = q.toLowerCase();
+    // if (lowerName === ql) {
+    //   score = Math.max(score, 100);
+    //   reasons.push("exact name");
+    // }
+    // if (lowerName.startsWith(ql)) {
+    //   score = Math.max(score, 70);
+    //   reasons.push("name startsWith");
+    // }
+    // if (lowerName.includes(ql)) {
+    //   score = Math.max(score, 50);
+    //   reasons.push("name includes");
+    // }
+    // const fs2 = fuzzyScore(ql, lowerName);
+    // score = Math.max(score, fs2);
+    // reasons.push(`name fuzzy:${fs2}`);
+
+    // give a +10 boost to those which we have searched for before.
+    // score += querySearch ? 10 : 0;
+
+    return { name, score: Math.floor(score), reasons };
   });
+
+  // if we have a perfect score.
+  // clearTimeout(timeout);
+  // timeout = setTimeout(() => {
+  //   if (q.length == 0) return;
+  //   scored.forEach((v) => {
+  //     if (v.score == 0) return;
+  //     searched.set(v.name, (searched.get(v.name) ?? 0) + 1)
+  //   })
+  // }, 1500);
+
 
   return scored
     .filter((r) => r.score >= MIN_SCORE)
@@ -210,11 +308,8 @@ export function renderResultSpan(result: SearchResult, query: string): HTMLSpanE
   if (textToHighlight.length === 0) {
     return span;
   }
-  try {
-    highlight_span(name, textToHighlight, false);
-  } catch (e) {
-    console.warn("highlight_span threw an error:", e);
-  }
+
+  highlight_span(name, textToHighlight, false);
   return span;
 }
 

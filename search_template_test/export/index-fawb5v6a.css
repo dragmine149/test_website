@@ -120,3 +120,7 @@ footer {
   display: inline-block;
   width: 100px;
 }
+
+#results span[style="order: 10000;"] {
+  display: none;
+}

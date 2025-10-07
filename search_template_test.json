@@ -3,19 +3,23 @@
     "export": {
       "dirs": {},
       "files": [
-        "index-epga5119.css",
-        "index-v4z4tcs4.js",
+        "index-fawb5v6a.css",
+        "index-vbdk01yt.js",
         "index.html"
       ]
     }
   },
   "files": [
     "build.sh",
+    "bun.lock",
     "index.html",
+    "package.json",
     "readme.md",
     "search.ts",
     "search_template_export.html",
     "style.css",
+    "test.js",
+    "test_highlight.ts",
     "usage.js.map",
     "usage.ts"
   ]
